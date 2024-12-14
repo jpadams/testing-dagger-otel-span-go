@@ -6,43 +6,19 @@ import (
 	"log"
 
 	"dagger.io/dagger"
-	"go.opentelemetry.io/otel"
+	"dagger.io/dagger/telemetry"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-// InitializeTracer initializes the OpenTelemetry tracer with a simple stdout exporter
-func InitializeTracer() *trace.TracerProvider {
-	// Create a stdout trace exporter
-	exporter, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
-	if err != nil {
-		log.Fatalf("failed to create exporter: %v", err)
-	}
-
-	// Create a trace provider with the stdout exporter
-	tp := trace.NewTracerProvider(
-		trace.WithBatcher(exporter),
-	)
-	otel.SetTracerProvider(tp)
-	return tp
-}
-
 func main() {
-	// Initialize the OpenTelemetry tracer
-	tracerProvider := InitializeTracer()
-	defer func() {
-		// Gracefully shut down the tracer provider
-		if err := tracerProvider.Shutdown(context.Background()); err != nil {
-			log.Fatalf("failed to shutdown TracerProvider: %v", err)
-		}
-	}()
+	// Initialize telemetry
+	otelCtx := telemetry.Init(context.Background(), telemetry.Config{Detect: true})
 
-	// Create a new tracer
-	tracer := otel.Tracer("dagger-otel-example")
+	// Create a tracer using telemetry.Tracer
+	tracer := telemetry.Tracer(otelCtx, "dagger-otel-example")
 
 	// Start a root span
-	ctx, span := tracer.Start(context.Background(), "main-process")
+	ctx, span := tracer.Start(otelCtx, "main-process")
 	defer span.End()
 
 	// Create a Dagger client
